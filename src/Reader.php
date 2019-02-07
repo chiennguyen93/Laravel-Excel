@@ -59,6 +59,11 @@ class Reader
     private $filesystem;
 
     /**
+     * @var enableTransaction
+     */
+    private $enableTransaction;
+
+    /**
      * @param Factory $filesystem
      */
     public function __construct(Factory $filesystem)
@@ -66,6 +71,7 @@ class Reader
         $this->filesystem = $filesystem;
 
         $this->tmpPath = config('excel.exports.temp_path', sys_get_temp_dir());
+        $this->enableTransaction = config('excel.imports.enable_transaction', true);
         $this->applyCsvSettings(config('excel.exports.csv', []));
 
         $this->setDefaultValueBinder();
@@ -93,14 +99,18 @@ class Reader
 
         $this->beforeReading($import, $reader);
 
-        DB::transaction(function () use ($import) {
-            foreach ($this->sheetImports as $index => $sheetImport) {
-                if ($sheet = $this->getSheet($import, $sheetImport, $index)) {
-                    $sheet->import($sheetImport, $sheet->getStartRow($sheetImport));
-                    $sheet->disconnect();
-                }
+        if ($this->enableTransaction) {
+            DB::beginTransaction();
+        }
+        foreach ($this->sheetImports as $index => $sheetImport) {
+            if ($sheet = $this->getSheet($import, $sheetImport, $index)) {
+                $sheet->import($sheetImport, $sheet->getStartRow($sheetImport));
+                $sheet->disconnect();
             }
-        });
+        }
+        if ($this->enableTransaction) {
+            DB::commit();
+        }
 
         $this->afterReading($import);
 

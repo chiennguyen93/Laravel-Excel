@@ -69,6 +69,9 @@ return [
             */
             'formatter' => 'slug',
         ],
+
+        // Enable/Disable transaction  (Use with mongodb)
+        'enable_transaction' => true,
     ],
 
     /*
